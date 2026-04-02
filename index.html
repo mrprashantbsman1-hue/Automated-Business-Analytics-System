@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏨 Hotel Goa — Booking Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #333; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1B2A4A 0%, #2E5F8A 100%);
+    color: white; padding: 18px 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 12px; color: #90CAF9; margin-top: 3px; }
+  .header .live-badge {
+    background: #27AE60; color: white; padding: 5px 14px;
+    border-radius: 20px; font-size: 12px; font-weight: 600;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+  /* MAIN LAYOUT */
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px; margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-left: 5px solid #2E5F8A;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .kpi-card.confirmed { border-left-color: #27AE60; }
+  .kpi-card.cancelled { border-left-color: #E74C3C; }
+  .kpi-card.pending   { border-left-color: #F39C12; }
+  .kpi-card.revenue   { border-left-color: #8E44AD; }
+  .kpi-card.guests    { border-left-color: #16A085; }
+  .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: #1B2A4A; }
+  .kpi-sub   { font-size: 12px; color: #666; margin-top: 4px; }
+
+  /* CHARTS ROW */
+  .charts-grid {
+    display: grid; grid-template-columns: 1fr 1.5fr 1.5fr;
+    gap: 16px; margin-bottom: 24px;
+  }
+  @media(max-width:900px){ .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .chart-title { font-size: 14px; font-weight: 600; color: #1B2A4A; margin-bottom: 14px; }
+  .chart-card canvas { max-height: 220px; }
+
+  /* ADD BOOKING FORM */
+  .form-card {
+    background: white; border-radius: 12px; padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 24px;
+  }
+  .form-title { font-size: 16px; font-weight: 700; color: #1B2A4A; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px; }
+  .form-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 14px;
+  }
+  .form-group label { font-size: 11px; color: #666; font-weight: 600; display: block; margin-bottom: 4px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #ddd;
+    border-radius: 8px; font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #2E5F8A; }
+  .btn-add {
+    background: linear-gradient(135deg, #1B2A4A, #2E5F8A);
+    color: white; border: none; padding: 10px 28px;
+    border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-add:hover { opacity: 0.88; }
+
+  /* DATA TABLE */
+  .table-card {
+    background: white; border-radius: 12px; padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .table-title { font-size: 16px; font-weight: 700; color: #1B2A4A; }
+  .search-box {
+    padding: 8px 14px; border: 1.5px solid #ddd; border-radius: 8px;
+    font-size: 13px; outline: none; width: 220px;
+  }
+  .search-box:focus { border-color: #2E5F8A; }
+  .filter-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 20px; border: none;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .filter-btn.all     { background: #1B2A4A; color: white; }
+  .filter-btn.confirmed { background: #D5F5E3; color: #1E8449; }
+  .filter-btn.cancelled { background: #FADBD8; color: #C0392B; }
+  .filter-btn.pending   { background: #FEF9E7; color: #D68910; }
+  .filter-btn.active    { box-shadow: 0 0 0 2px #2E5F8A; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #1B2A4A; color: white; padding: 11px 12px;
+    text-align: center; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { filter: brightness(0.96); }
+  tbody td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+  .row-confirmed { background: #F0FBF4; }
+  .row-cancelled { background: #FDF3F2; }
+  .row-pending   { background: #FFFBF0; }
+
+  .status-badge {
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .status-confirmed { background: #D5F5E3; color: #1E8449; }
+  .status-cancelled { background: #FADBD8; color: #C0392B; }
+  .status-pending   { background: #FEF9E7; color: #D68910; }
+
+  .btn-delete {
+    background: none; border: none; color: #E74C3C;
+    cursor: pointer; font-size: 15px; padding: 2px 6px;
+    border-radius: 4px; transition: background 0.2s;
+  }
+  .btn-delete:hover { background: #FADBD8; }
+
+  .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1B2A4A; color: white; padding: 12px 22px;
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 9999;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* FOOTER */
+  .footer { text-align: center; padding: 20px; color: #aaa; font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>🏨 Hotel Goa — Booking Management Dashboard</h1>
+    <div class="subtitle">Real-time Auto-Update System | Data saved in browser</div>
+  </div>
+  <div class="live-badge">⚡ LIVE</div>
+</div>
+
+<div class="container">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Bookings</div>
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-sub">All records</div>
+    </div>
+    <div class="kpi-card confirmed">
+      <div class="kpi-label">✅ Confirmed</div>
+      <div class="kpi-value" id="kpi-confirmed">0</div>
+      <div class="kpi-sub" id="kpi-confirmed-amt">₹0</div>
+    </div>
+    <div class="kpi-card cancelled">
+      <div class="kpi-label">❌ Cancelled</div>
+      <div class="kpi-value" id="kpi-cancelled">0</div>
+      <div class="kpi-sub" id="kpi-cancelled-amt">₹0</div>
+    </div>
+    <div class="kpi-card pending">
+      <div class="kpi-label">⏳ Pending</div>
+      <div class="kpi-value" id="kpi-pending">0</div>
+      <div class="kpi-sub" id="kpi-pending-amt">₹0</div>
+    </div>
+    <div class="kpi-card revenue">
+      <div class="kpi-label">💰 Total Revenue</div>
+      <div class="kpi-value" id="kpi-revenue">₹0</div>
+      <div class="kpi-sub">Confirmed only</div>
+    </div>
+    <div class="kpi-card guests">
+      <div class="kpi-label">👥 Total Guests</div>
+      <div class="kpi-value" id="kpi-guests">0</div>
+      <div class="kpi-sub" id="kpi-avg-price">Avg ₹0/booking</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">📊 Booking Status</div>
+      <canvas id="pieChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🏙️ Top Cities by Bookings</div>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📈 Monthly Revenue Trend</div>
+      <canvas id="lineChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ADD BOOKING FORM -->
+  <div class="form-card">
+    <div class="form-title">➕ Add New Booking</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Booking ID</label>
+        <input type="text" id="f-id" placeholder="e.g. B231">
+      </div>
+      <div class="form-group">
+        <label>Guest Name</label>
+        <input type="text" id="f-name" placeholder="Full Name">
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" id="f-city" placeholder="City">
+      </div>
+      <div class="form-group">
+        <label>Check-In Date</label>
+        <input type="date" id="f-checkin">
+      </div>
+      <div class="form-group">
+        <label>Check-Out Date</label>
+        <input type="date" id="f-checkout">
+      </div>
+      <div class="form-group">
+        <label>Guests</label>
+        <input type="number" id="f-guests" placeholder="No. of guests" min="1">
+      </div>
+      <div class="form-group">
+        <label>Price (₹)</label>
+        <input type="number" id="f-price" placeholder="Amount in INR" min="0">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="Confirmed">✅ Confirmed</option>
+          <option value="Pending" selected>⏳ Pending</option>
+          <option value="Cancelled">❌ Cancelled</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addBooking()">➕ Add Booking</button>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">📋 All Bookings</div>
+      <input class="search-box" type="text" id="searchBox" placeholder="🔍 Search name, city, ID..." oninput="renderTable()">
+      <div class="filter-btns">
+        <button class="filter-btn all active" onclick="setFilter('all', this)">All</button>
+        <button class="filter-btn confirmed" onclick="setFilter('Confirmed', this)">Confirmed</button>
+        <button class="filter-btn cancelled" onclick="setFilter('Cancelled', this)">Cancelled</button>
+        <button class="filter-btn pending" onclick="setFilter('Pending', this)">Pending</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Booking ID</th>
+            <th>Name</th>
+            <th>City</th>
+            <th>Check-In</th>
+            <th>Check-Out</th>
+            <th>Nights</th>
+            <th>Guests</th>
+            <th>Price (₹)</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">🏨 Hotel Goa Booking Dashboard | Data auto-saved in browser | Last updated: <span id="lastUpdated">-</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── INITIAL DATA ──────────────────────────────────────────────────────────────
+const INITIAL_DATA = [
+  {id:"B001",name:"Rahul Sharma",city:"Delhi",checkin:"2026-03-01",checkout:"2026-03-03",guests:2,price:4500,status:"Confirmed"},
+  {id:"B002",name:"Anita Verma",city:"Noida",checkin:"2026-03-02",checkout:"2026-03-05",guests:3,price:6500,status:"Confirmed"},
+  {id:"B003",name:"Rohit Gupta",city:"Gurgaon",checkin:"2026-03-03",checkout:"2026-03-04",guests:1,price:7000,status:"Cancelled"},
+  {id:"B004",name:"Pooja Singh",city:"Delhi",checkin:"2026-03-04",checkout:"2026-03-06",guests:2,price:5000,status:"Confirmed"},
+  {id:"B005",name:"Amit Kumar",city:"Noida",checkin:"2026-03-05",checkout:"2026-03-08",guests:4,price:8000,status:"Pending"},
+  {id:"B006",name:"Neha Jain",city:"Delhi",checkin:"2026-03-06",checkout:"2026-03-07",guests:1,price:3000,status:"Confirmed"},
+  {id:"B007",name:"Suresh Patel",city:"Gurgaon",checkin:"2026-03-07",checkout:"2026-03-09",guests:2,price:5500,status:"Confirmed"},
+  {id:"B008",name:"Kavita Sharma",city:"Noida",checkin:"2026-03-08",checkout:"2026-03-10",guests:3,price:6000,status:"Cancelled"},
+  {id:"B009",name:"Vikas Mehta",city:"Delhi",checkin:"2026-03-09",checkout:"2026-03-12",guests:2,price:7200,status:"Confirmed"},
+  {id:"B010",name:"Ritu Arora",city:"Gurgaon",checkin:"2026-03-10",checkout:"2026-03-11",guests:1,price:2500,status:"Pending"},
+  {id:"B011",name:"Manoj Verma",city:"Delhi",checkin:"2026-03-11",checkout:"2026-03-13",guests:2,price:4800,status:"Confirmed"},
+  {id:"B012",name:"Sneha Kapoor",city:"Noida",checkin:"2026-03-12",checkout:"2026-03-14",guests:3,price:6700,status:"Confirmed"},
+  {id:"B013",name:"Deepak Yadav",city:"Gurgaon",checkin:"2026-03-13",checkout:"2026-03-15",guests:2,price:5200,status:"Cancelled"},
+  {id:"B014",name:"Priya Bansal",city:"Delhi",checkin:"2026-03-14",checkout:"2026-03-17",guests:4,price:9000,status:"Confirmed"},
+  {id:"B015",name:"Aakash Gupta",city:"Noida",checkin:"2026-03-15",checkout:"2026-03-16",guests:1,price:3000,status:"Pending"},
+  {id:"B016",name:"Nidhi Sharma",city:"Delhi",checkin:"2026-03-16",checkout:"2026-03-18",guests:2,price:5600,status:"Confirmed"},
+  {id:"B017",name:"Ramesh Singh",city:"Gurgaon",checkin:"2026-03-17",checkout:"2026-03-20",guests:3,price:7500,status:"Confirmed"},
+  {id:"B018",name:"Pallavi Jain",city:"Noida",checkin:"2026-03-18",checkout:"2026-03-19",guests:1,price:2800,status:"Cancelled"},
+  {id:"B019",name:"Tarun Malhotra",city:"Delhi",checkin:"2026-03-19",checkout:"2026-03-21",guests:2,price:4900,status:"Confirmed"},
+  {id:"B020",name:"Komal Arora",city:"Gurgaon",checkin:"2026-03-20",checkout:"2026-03-23",guests:3,price:8200,status:"Pending"},
+  {id:"B021",name:"Arjun Reddy",city:"Hyderabad",checkin:"2026-02-01",checkout:"2026-02-03",guests:2,price:4800,status:"Confirmed"},
+  {id:"B022",name:"Kiran Nair",city:"Kochi",checkin:"2026-02-02",checkout:"2026-02-05",guests:3,price:7200,status:"Confirmed"},
+  {id:"B023",name:"Rohini Desai",city:"Pune",checkin:"2026-02-04",checkout:"2026-02-06",guests:2,price:5300,status:"Confirmed"},
+  {id:"B024",name:"Farhan Khan",city:"Bhopal",checkin:"2026-02-09",checkout:"2026-02-12",guests:2,price:7100,status:"Confirmed"},
+  {id:"B025",name:"Riya Sen",city:"Kolkata",checkin:"2026-02-10",checkout:"2026-02-11",guests:1,price:2600,status:"Pending"},
+  {id:"B026",name:"Vikram Bhatt",city:"Udaipur",checkin:"2026-02-22",checkout:"2026-02-24",guests:2,price:5200,status:"Confirmed"},
+  {id:"B027",name:"Rahul Bhat",city:"Srinagar",checkin:"2026-02-25",checkout:"2026-02-28",guests:4,price:9600,status:"Confirmed"},
+  {id:"B028",name:"Aditya Kulshrestha",city:"Jaipur",checkin:"2026-01-01",checkout:"2026-01-03",guests:2,price:4800,status:"Confirmed"},
+  {id:"B029",name:"Zoya Khan",city:"Bhopal",checkin:"2026-01-09",checkout:"2026-01-12",guests:2,price:7100,status:"Confirmed"},
+  {id:"B030",name:"Farha Naaz",city:"Hyderabad",checkin:"2026-01-25",checkout:"2026-01-28",guests:4,price:9600,status:"Confirmed"},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let bookings = [];
+let currentFilter = 'all';
+let pieChart, barChart, lineChart;
+
+function loadData() {
+  const saved = localStorage.getItem('hotelBookings');
+  if (saved) {
+    bookings = JSON.parse(saved);
+  } else {
+    bookings = [...INITIAL_DATA];
+    saveData();
+  }
+}
+
+function saveData() {
+  localStorage.setItem('hotelBookings', JSON.stringify(bookings));
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleString('en-IN');
+}
+
+// ── KPI UPDATE ────────────────────────────────────────────────────────────────
+function updateKPIs() {
+  const confirmed = bookings.filter(b => b.status === 'Confirmed');
+  const cancelled = bookings.filter(b => b.status === 'Cancelled');
+  const pending   = bookings.filter(b => b.status === 'Pending');
+
+  const confAmt = confirmed.reduce((s,b) => s + b.price, 0);
+  const cancAmt = cancelled.reduce((s,b) => s + b.price, 0);
+  const pendAmt = pending.reduce((s,b) => s + b.price, 0);
+  const totalGuests = bookings.reduce((s,b) => s + b.guests, 0);
+  const avgPrice = confirmed.length ? Math.round(confAmt / confirmed.length) : 0;
+
+  document.getElementById('kpi-total').textContent = bookings.length;
+  document.getElementById('kpi-confirmed').textContent = confirmed.length;
+  document.getElementById('kpi-confirmed-amt').textContent = '₹' + confAmt.toLocaleString('en-IN');
+  document.getElementById('kpi-cancelled').textContent = cancelled.length;
+  document.getElementById('kpi-cancelled-amt').textContent = '₹' + cancAmt.toLocaleString('en-IN');
+  document.getElementById('kpi-pending').textContent = pending.length;
+  document.getElementById('kpi-pending-amt').textContent = '₹' + pendAmt.toLocaleString('en-IN');
+  document.getElementById('kpi-revenue').textContent = '₹' + confAmt.toLocaleString('en-IN');
+  document.getElementById('kpi-guests').textContent = totalGuests;
+  document.getElementById('kpi-avg-price').textContent = 'Avg ₹' + avgPrice.toLocaleString('en-IN') + '/booking';
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function updateCharts() {
+  const confirmed = bookings.filter(b => b.status === 'Confirmed').length;
+  const cancelled = bookings.filter(b => b.status === 'Cancelled').length;
+  const pending   = bookings.filter(b => b.status === 'Pending').length;
+
+  // PIE
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Confirmed', 'Cancelled', 'Pending'],
+      datasets: [{
+        data: [confirmed, cancelled, pending],
+        backgroundColor: ['#27AE60', '#E74C3C', '#F39C12'],
+        borderWidth: 2, borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // BAR - City
+  const cityMap = {};
+  bookings.forEach(b => { cityMap[b.city] = (cityMap[b.city] || 0) + 1; });
+  const sortedCities = Object.entries(cityMap).sort((a,b) => b[1]-a[1]).slice(0,8);
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedCities.map(c => c[0]),
+      datasets: [{
+        label: 'Bookings',
+        data: sortedCities.map(c => c[1]),
+        backgroundColor: '#2E5F8A',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+
+  // LINE - Monthly Revenue
+  const monthMap = {};
+  bookings.filter(b => b.status === 'Confirmed').forEach(b => {
+    const d = new Date(b.checkin);
+    const key = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+    monthMap[key] = (monthMap[key] || 0) + b.price;
+  });
+  const sortedMonths = Object.entries(monthMap).sort((a,b) => {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const [am, ay] = a[0].split(' ');
+    const [bm, by] = b[0].split(' ');
+    return (parseInt(ay)*12 + months.indexOf(am)) - (parseInt(by)*12 + months.indexOf(bm));
+  });
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: sortedMonths.map(m => m[0]),
+      datasets: [{
+        label: 'Revenue (₹)',
+        data: sortedMonths.map(m => m[1]),
+        borderColor: '#27AE60',
+        backgroundColor: 'rgba(39,174,96,0.1)',
+        tension: 0.4, fill: true,
+        pointBackgroundColor: '#27AE60',
+        pointRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+      }
+    }
+  });
+}
+
+// ── TABLE ─────────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  let filtered = bookings.filter(b => {
+    const matchFilter = currentFilter === 'all' || b.status === currentFilter;
+    const matchSearch = !search ||
+      b.id.toLowerCase().includes(search) ||
+      b.name.toLowerCase().includes(search) ||
+      b.city.toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" class="no-data">No bookings found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((b, i) => {
+    const nights = Math.round((new Date(b.checkout) - new Date(b.checkin)) / 86400000);
+    const rowClass = b.status === 'Confirmed' ? 'row-confirmed' : b.status === 'Cancelled' ? 'row-cancelled' : 'row-pending';
+    const badgeClass = b.status === 'Confirmed' ? 'status-confirmed' : b.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+    const idx = bookings.findIndex(x => x.id === b.id);
+    return `<tr class="${rowClass}">
+      <td>${i+1}</td>
+      <td><strong>${b.id}</strong></td>
+      <td>${b.name}</td>
+      <td>${b.city}</td>
+      <td>${formatDate(b.checkin)}</td>
+      <td>${formatDate(b.checkout)}</td>
+      <td>${nights}</td>
+      <td>${b.guests}</td>
+      <td>₹${b.price.toLocaleString('en-IN')}</td>
+      <td>
+        <select class="status-badge ${badgeClass}" onchange="changeStatus(${idx}, this.value)">
+          <option ${b.status==='Confirmed'?'selected':''}>Confirmed</option>
+          <option ${b.status==='Cancelled'?'selected':''}>Cancelled</option>
+          <option ${b.status==='Pending'?'selected':''}>Pending</option>
+        </select>
+      </td>
+      <td><button class="btn-delete" onclick="deleteBooking(${idx})" title="Delete">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function changeStatus(idx, newStatus) {
+  bookings[idx].status = newStatus;
+  saveData();
+  updateAll();
+  showToast(`✅ Status updated to ${newStatus}`);
+}
+
+function deleteBooking(idx) {
+  if (!confirm(`Delete booking ${bookings[idx].id}?`)) return;
+  bookings.splice(idx, 1);
+  saveData();
+  updateAll();
+  showToast('🗑️ Booking deleted');
+}
+
+// ── ADD BOOKING ───────────────────────────────────────────────────────────────
+function addBooking() {
+  const id       = document.getElementById('f-id').value.trim();
+  const name     = document.getElementById('f-name').value.trim();
+  const city     = document.getElementById('f-city').value.trim();
+  const checkin  = document.getElementById('f-checkin').value;
+  const checkout = document.getElementById('f-checkout').value;
+  const guests   = parseInt(document.getElementById('f-guests').value);
+  const price    = parseInt(document.getElementById('f-price').value);
+  const status   = document.getElementById('f-status').value;
+
+  if (!id || !name || !city || !checkin || !checkout || !guests || !price) {
+    showToast('⚠️ Please fill all fields!'); return;
+  }
+  if (bookings.find(b => b.id === id)) {
+    showToast('⚠️ Booking ID already exists!'); return;
+  }
+  if (new Date(checkout) <= new Date(checkin)) {
+    showToast('⚠️ Check-out must be after Check-in!'); return;
+  }
+
+  bookings.unshift({ id, name, city, checkin, checkout, guests, price, status });
+  saveData();
+  updateAll();
+
+  // Clear form
+  ['f-id','f-name','f-city','f-checkin','f-checkout','f-guests','f-price'].forEach(f => {
+    document.getElementById(f).value = '';
+  });
+  document.getElementById('f-status').value = 'Pending';
+
+  showToast(`🎉 Booking ${id} added successfully!`);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── UPDATE ALL ────────────────────────────────────────────────────────────────
+function updateAll() {
+  updateKPIs();
+  updateCharts();
+  renderTable();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadData();
+updateAll();
+document.getElementById('lastUpdated').textContent = new Date().toLocaleString('en-IN');
+</script>
+</body>
+</html>
